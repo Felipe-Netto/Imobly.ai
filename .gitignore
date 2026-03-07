@@ -1,0 +1,21 @@
+﻿# --- Pastas de Compilação (Binários) ---
+[Bb]in/
+[Oo]bj/
+
+# --- Configurações de IDE (Visual Studio / VS Code) ---
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+
+# --- Segredos e Configurações Locais ---
+# Nunca suba o appsettings.Development.json se ele tiver senhas reais
+appsettings.Development.json
+# O .NET User Secrets fica fora da pasta do projeto, mas por segurança:
+secrets.json
+.ServiceHub/
+
+# --- Logs e Dados Temporários ---
+*.log
+.DS_Store
