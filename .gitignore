@@ -19,3 +19,5 @@ secrets.json
 # --- Logs e Dados Temporários ---
 *.log
 .DS_Store
+
+.env

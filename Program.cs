@@ -1,27 +1,69 @@
+using System.Text;
+using ImoblyAI.Api.Data;
+using ImoblyAI.Api.DTOs.Ideas;
+using ImoblyAI.Api.Helpers;
+using ImoblyAI.Api.Routes.Auth;
 using ImoblyAI.Api.Services;
+using ImoblyAI.Api.Services.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(key)
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddOpenApi();
+
 builder.Services.AddHttpClient<OpenAIService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<TokenService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.MapPost("/api/ideias", async (string descricao, OpenAIService openAi) =>
-{
-    var resultado = await openAi.GerarIdeiasAsync(descricao);
-    return Results.Content(resultado, "application/json");
-});
-
 app.UseHttpsRedirection();
 
-app.Run();
+app.UseAuthentication();
+app.UseAuthorization();
 
+app.MapAuthenticationRoutes();
+
+app.MapPost("/api/ideias", async (IdeasDTO dto, OpenAIService openAi) =>
+    {
+        var result = await openAi.GerarIdeiasAsync(dto.Descricao);
+        return ResultHandler.Handle(result);
+    })
+    .RequireAuthorization();
+
+app.Run();
